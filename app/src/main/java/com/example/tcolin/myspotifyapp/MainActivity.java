@@ -21,9 +21,9 @@ public class MainActivity extends Activity implements
 {
 
     // TODO: Replace with your client ID
-    private static final String CLIENT_ID = "yourclientid";
+    private static final String CLIENT_ID = "d644bb272241483e9fad4cf350b1125f";
     // TODO: Replace with your redirect URI
-    private static final String REDIRECT_URI = "yourcustomprotocol://callback";
+    private static final String REDIRECT_URI = "my-spotify-app://callback";
 
     private Player mPlayer;
 
