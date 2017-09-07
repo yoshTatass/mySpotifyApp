@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.TextView;
 
 import com.spotify.sdk.android.authentication.AuthenticationClient;
 import com.spotify.sdk.android.authentication.AuthenticationRequest;
@@ -16,6 +17,16 @@ import com.spotify.sdk.android.player.PlayerEvent;
 import com.spotify.sdk.android.player.Spotify;
 import com.spotify.sdk.android.player.SpotifyPlayer;
 
+import kaaes.spotify.webapi.android.SpotifyApi;
+import kaaes.spotify.webapi.android.SpotifyService;
+import kaaes.spotify.webapi.android.models.Album;
+import kaaes.spotify.webapi.android.models.Track;
+import retrofit.Callback;
+import retrofit.RequestInterceptor;
+import retrofit.RestAdapter;
+import retrofit.RetrofitError;
+import retrofit.client.Response;
+
 public class MainActivity extends Activity implements
         SpotifyPlayer.NotificationCallback, ConnectionStateCallback
 {
@@ -26,6 +37,7 @@ public class MainActivity extends Activity implements
     private static final String REDIRECT_URI = "my-spotify-app://callback";
 
     private Player mPlayer;
+    private SpotifyService spotify;
 
     // Request code that will be used to verify if the result comes from correct activity
     // Can be any integer
@@ -43,6 +55,20 @@ public class MainActivity extends Activity implements
         AuthenticationRequest request = builder.build();
 
         AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request);
+
+        SpotifyApi api = new SpotifyApi();
+
+        RestAdapter restAdapter = new RestAdapter.Builder()
+                .setEndpoint(SpotifyApi.SPOTIFY_WEB_API_ENDPOINT)
+                .setRequestInterceptor(new RequestInterceptor() {
+                    @Override
+                    public void intercept(RequestFacade request) {
+                        request.addHeader("Authorization", "Bearer " + CLIENT_ID);
+                    }
+                })
+                .build();
+
+        spotify = restAdapter.create(SpotifyService.class);
     }
 
     @Override
@@ -51,7 +77,7 @@ public class MainActivity extends Activity implements
 
         // Check if result comes from the correct activity
         if (requestCode == REQUEST_CODE) {
-            AuthenticationResponse response = AuthenticationClient.getResponse(resultCode, intent);
+            final AuthenticationResponse response = AuthenticationClient.getResponse(resultCode, intent);
             if (response.getType() == AuthenticationResponse.Type.TOKEN) {
                 Config playerConfig = new Config(this, response.getAccessToken(), CLIENT_ID);
                 Spotify.getPlayer(playerConfig, this, new SpotifyPlayer.InitializationObserver() {
@@ -67,6 +93,20 @@ public class MainActivity extends Activity implements
                         Log.e("MainActivity", "Could not initialize player: " + throwable.getMessage());
                     }
                 });
+
+                SpotifyApi api = new SpotifyApi();
+
+                RestAdapter restAdapter = new RestAdapter.Builder()
+                        .setEndpoint(SpotifyApi.SPOTIFY_WEB_API_ENDPOINT)
+                        .setRequestInterceptor(new RequestInterceptor() {
+                            @Override
+                            public void intercept(RequestFacade request) {
+                                request.addHeader("Authorization", "Bearer " + response.getAccessToken());
+                            }
+                        })
+                        .build();
+
+                spotify = restAdapter.create(SpotifyService.class);
             }
         }
     }
@@ -101,7 +141,20 @@ public class MainActivity extends Activity implements
     public void onLoggedIn() {
         Log.d("MainActivity", "User logged in");
 
-        mPlayer.playUri(null, "spotify:track:2TpxZ7JUBn3uw46aR7qd6V", 0, 0);
+        spotify.getTrack("2TpxZ7JUBn3uw46aR7qd6V", new Callback<Track>() {
+            @Override
+            public void success(Track track, Response response) {
+                Log.d("Album success", track.uri);
+                mPlayer.playUri(null, track.uri, 0, 0);
+                TextView tv1 = (TextView)findViewById(R.id.title);
+                tv1.setText(track.name);
+            }
+
+            @Override
+            public void failure(RetrofitError error) {
+                Log.d("Album failure", error.toString());
+            }
+        });
     }
 
     @Override
