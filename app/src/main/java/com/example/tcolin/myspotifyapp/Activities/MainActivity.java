@@ -1,13 +1,20 @@
-package com.example.tcolin.myspotifyapp;
+package com.example.tcolin.myspotifyapp.Activities;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
+import android.content.IntentFilter;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.android.volley.toolbox.NetworkImageView;
+import com.example.tcolin.myspotifyapp.MainApplication;
+import com.example.tcolin.myspotifyapp.R;
+import com.example.tcolin.myspotifyapp.Receivers.MyBroadcastReceiver;
 import com.spotify.sdk.android.authentication.AuthenticationClient;
 import com.spotify.sdk.android.authentication.AuthenticationRequest;
 import com.spotify.sdk.android.authentication.AuthenticationResponse;
@@ -21,8 +28,8 @@ import com.spotify.sdk.android.player.SpotifyPlayer;
 
 import kaaes.spotify.webapi.android.SpotifyApi;
 import kaaes.spotify.webapi.android.SpotifyService;
-import kaaes.spotify.webapi.android.models.Album;
 import kaaes.spotify.webapi.android.models.Track;
+import kaaes.spotify.webapi.android.models.UserPrivate;
 import retrofit.Callback;
 import retrofit.RequestInterceptor;
 import retrofit.RestAdapter;
@@ -44,11 +51,16 @@ public class MainActivity extends Activity implements
     // Request code that will be used to verify if the result comes from correct activity
     // Can be any integer
     private static final int REQUEST_CODE = 1337;
+    private Context context;
+    private MyBroadcastReceiver myBroadcastReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        myBroadcastReceiver = new MyBroadcastReceiver();
+
+        context = this;
 
         AuthenticationRequest.Builder builder = new AuthenticationRequest.Builder(CLIENT_ID,
                 AuthenticationResponse.Type.TOKEN,
@@ -71,6 +83,8 @@ public class MainActivity extends Activity implements
                 .build();
 
         spotify = restAdapter.create(SpotifyService.class);
+
+        LocalBroadcastManager.getInstance(context).registerReceiver(myBroadcastReceiver, new IntentFilter(MyBroadcastReceiver.BroadcastTypes.METADATA_CHANGED));
     }
 
     @Override
@@ -143,22 +157,25 @@ public class MainActivity extends Activity implements
     public void onLoggedIn() {
         Log.e("MainActivity", "User logged in");
 
-        spotify.getTrack("2TpxZ7JUBn3uw46aR7qd6V", new Callback<Track>() {
-            @Override
-            public void success(Track track, Response response) {
-                Log.e("Album success", track.uri);
-                mPlayer.playUri(null, track.uri, 0, 0);
-                TextView title = findViewById(R.id.title);
-                title.setText(track.name);
-                ImageView cover = findViewById(R.id.cover);
-                title.setText(track.album.name);
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                Log.e("Album failure", error.toString());
-            }
-        });
+        TextView title = findViewById(R.id.title);
+        Log.e("MainActivity", myBroadcastReceiver.getTrackName());
+        title.setText(myBroadcastReceiver.getTrackName());
+//        spotify.getTrack("2TpxZ7JUBn3uw46aR7qd6V", new Callback<Track>() {
+//            @Override
+//            public void success(Track track, Response response) {
+//                Log.e("Album success", track.uri);
+//                mPlayer.playUri(null, track.uri, 0, 0);
+//                TextView title = findViewById(R.id.title);
+//                title.setText(track.name);
+//                NetworkImageView cover = (NetworkImageView)findViewById(R.id.cover);
+//                cover.setImageUrl(track.album.images.get(0).url, MainApplication.getInstance(context).getImageLoader());
+//            }
+//
+//            @Override
+//            public void failure(RetrofitError error) {
+//                Log.e("Album failure", error.toString());
+//            }
+//        });
     }
 
     @Override

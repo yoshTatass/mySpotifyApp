@@ -32,6 +32,7 @@ dependencies {
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
+    compile 'com.android.volley:volley:1.0.0'
 
     // This library handles authentication and authorization
     compile 'com.spotify.sdk:spotify-android-auth:1.0.0@aar'
