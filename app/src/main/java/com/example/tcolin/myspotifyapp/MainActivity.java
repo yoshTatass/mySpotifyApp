@@ -2,8 +2,10 @@ package com.example.tcolin.myspotifyapp;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.spotify.sdk.android.authentication.AuthenticationClient;
@@ -119,7 +121,7 @@ public class MainActivity extends Activity implements
 
     @Override
     public void onPlaybackEvent(PlayerEvent playerEvent) {
-        Log.d("MainActivity", "Playback event received: " + playerEvent.name());
+        Log.e("MainActivity", "Playback event received: " + playerEvent.name());
         switch (playerEvent) {
             // Handle event type as necessary
             default:
@@ -129,7 +131,7 @@ public class MainActivity extends Activity implements
 
     @Override
     public void onPlaybackError(Error error) {
-        Log.d("MainActivity", "Playback error received: " + error.name());
+        Log.e("MainActivity", "Playback error received: " + error.name());
         switch (error) {
             // Handle error type as necessary
             default:
@@ -139,41 +141,43 @@ public class MainActivity extends Activity implements
 
     @Override
     public void onLoggedIn() {
-        Log.d("MainActivity", "User logged in");
+        Log.e("MainActivity", "User logged in");
 
         spotify.getTrack("2TpxZ7JUBn3uw46aR7qd6V", new Callback<Track>() {
             @Override
             public void success(Track track, Response response) {
-                Log.d("Album success", track.uri);
+                Log.e("Album success", track.uri);
                 mPlayer.playUri(null, track.uri, 0, 0);
-                TextView tv1 = (TextView)findViewById(R.id.title);
-                tv1.setText(track.name);
+                TextView title = findViewById(R.id.title);
+                title.setText(track.name);
+                ImageView cover = findViewById(R.id.cover);
+                title.setText(track.album.name);
             }
 
             @Override
             public void failure(RetrofitError error) {
-                Log.d("Album failure", error.toString());
+                Log.e("Album failure", error.toString());
             }
         });
     }
 
     @Override
     public void onLoggedOut() {
-        Log.d("MainActivity", "User logged out");
+        Log.e("MainActivity", "User logged out");
     }
 
     @Override
     public void onLoginFailed(Error error) {
-        Log.d("MainActivity", error.toString());
+        Log.e("MainActivity", error.toString());
     }
 
     @Override
     public void onTemporaryError() {
-        Log.d("MainActivity", "Temporary error occurred");
+        Log.e("MainActivity", "Temporary error occurred");
     }
 
     @Override
     public void onConnectionMessage(String message) {
-        Log.d("MainActivity", "Received connection message: " + message);
+        Log.e("MainActivity", "Received connection message: " + message);
     }
 }
