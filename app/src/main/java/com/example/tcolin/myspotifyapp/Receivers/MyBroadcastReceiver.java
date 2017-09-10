@@ -5,6 +5,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import com.example.tcolin.myspotifyapp.Activities.MainActivity;
+import com.example.tcolin.myspotifyapp.Observables.ObservableObject;
+
 /**
  * Created by tcolin on 08/09/2017.
  */
@@ -25,25 +28,8 @@ public class MyBroadcastReceiver extends BroadcastReceiver {
         // This is sent with all broadcasts, regardless of type. The value is taken from
         // System.currentTimeMillis(), which you can compare to in order to determine how
         // old the event is.
-        long timeSentInMs = intent.getLongExtra("timeSent", 0L);
+        ObservableObject.getInstance().updateValue(intent);
 
-        String action = intent.getAction();
-
-        if (action.equals(BroadcastTypes.METADATA_CHANGED)) {
-            Log.e("MainActivity", "trigger");
-            trackId = intent.getStringExtra("id");
-            artistName = intent.getStringExtra("artist");
-            albumName = intent.getStringExtra("album");
-            trackName = intent.getStringExtra("track");
-            int trackLengthInSec = intent.getIntExtra("length", 0);
-            // Do something with extracted information...
-        } else if (action.equals(BroadcastTypes.PLAYBACK_STATE_CHANGED)) {
-            boolean playing = intent.getBooleanExtra("playing", false);
-            int positionInMs = intent.getIntExtra("playbackPosition", 0);
-            // Do something with extracted information
-        } else if (action.equals(BroadcastTypes.QUEUE_CHANGED)) {
-            // Sent only as a notification, your app may want to respond accordingly.
-        }
     }
 
     public String getTrackId() {

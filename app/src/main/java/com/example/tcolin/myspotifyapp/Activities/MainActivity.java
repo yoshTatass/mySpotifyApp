@@ -4,8 +4,10 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
@@ -13,8 +15,10 @@ import android.widget.TextView;
 
 import com.android.volley.toolbox.NetworkImageView;
 import com.example.tcolin.myspotifyapp.MainApplication;
+import com.example.tcolin.myspotifyapp.Observables.ObservableObject;
 import com.example.tcolin.myspotifyapp.R;
 import com.example.tcolin.myspotifyapp.Receivers.MyBroadcastReceiver;
+import com.example.tcolin.myspotifyapp.Views.FadeInNetworkImageView;
 import com.spotify.sdk.android.authentication.AuthenticationClient;
 import com.spotify.sdk.android.authentication.AuthenticationRequest;
 import com.spotify.sdk.android.authentication.AuthenticationResponse;
@@ -26,10 +30,15 @@ import com.spotify.sdk.android.player.PlayerEvent;
 import com.spotify.sdk.android.player.Spotify;
 import com.spotify.sdk.android.player.SpotifyPlayer;
 
+import java.util.Observable;
+import java.util.Observer;
+
 import kaaes.spotify.webapi.android.SpotifyApi;
+import kaaes.spotify.webapi.android.SpotifyError;
 import kaaes.spotify.webapi.android.SpotifyService;
+import kaaes.spotify.webapi.android.models.Album;
+import kaaes.spotify.webapi.android.models.Artist;
 import kaaes.spotify.webapi.android.models.Track;
-import kaaes.spotify.webapi.android.models.UserPrivate;
 import retrofit.Callback;
 import retrofit.RequestInterceptor;
 import retrofit.RestAdapter;
@@ -37,7 +46,7 @@ import retrofit.RetrofitError;
 import retrofit.client.Response;
 
 public class MainActivity extends Activity implements
-        SpotifyPlayer.NotificationCallback, ConnectionStateCallback
+        SpotifyPlayer.NotificationCallback, ConnectionStateCallback, Observer
 {
 
     // TODO: Replace with your client ID
@@ -85,6 +94,9 @@ public class MainActivity extends Activity implements
         spotify = restAdapter.create(SpotifyService.class);
 
         LocalBroadcastManager.getInstance(context).registerReceiver(myBroadcastReceiver, new IntentFilter(MyBroadcastReceiver.BroadcastTypes.METADATA_CHANGED));
+        LocalBroadcastManager.getInstance(context).registerReceiver(myBroadcastReceiver, new IntentFilter(MyBroadcastReceiver.BroadcastTypes.PLAYBACK_STATE_CHANGED));
+
+        ObservableObject.getInstance().addObserver(this);
     }
 
     @Override
@@ -156,26 +168,6 @@ public class MainActivity extends Activity implements
     @Override
     public void onLoggedIn() {
         Log.e("MainActivity", "User logged in");
-
-        TextView title = findViewById(R.id.title);
-        Log.e("MainActivity", myBroadcastReceiver.getTrackName());
-        title.setText(myBroadcastReceiver.getTrackName());
-//        spotify.getTrack("2TpxZ7JUBn3uw46aR7qd6V", new Callback<Track>() {
-//            @Override
-//            public void success(Track track, Response response) {
-//                Log.e("Album success", track.uri);
-//                mPlayer.playUri(null, track.uri, 0, 0);
-//                TextView title = findViewById(R.id.title);
-//                title.setText(track.name);
-//                NetworkImageView cover = (NetworkImageView)findViewById(R.id.cover);
-//                cover.setImageUrl(track.album.images.get(0).url, MainApplication.getInstance(context).getImageLoader());
-//            }
-//
-//            @Override
-//            public void failure(RetrofitError error) {
-//                Log.e("Album failure", error.toString());
-//            }
-//        });
     }
 
     @Override
@@ -196,5 +188,73 @@ public class MainActivity extends Activity implements
     @Override
     public void onConnectionMessage(String message) {
         Log.e("MainActivity", "Received connection message: " + message);
+    }
+
+    @Override
+    public void update(Observable observable, Object o) {
+        Intent intent = (Intent) o;
+        final String action = intent.getAction();
+
+        if (action.equals(MyBroadcastReceiver.BroadcastTypes.METADATA_CHANGED)) {
+            Log.e("MainActivity", "trigger");
+            TextView title = findViewById(R.id.title);
+            title.setText(intent.getStringExtra("track"));
+            Log.e("MainActivity", intent.getExtras().toString());
+            final FadeInNetworkImageView cover = findViewById(R.id.cover);
+            final FadeInNetworkImageView layoutView = findViewById(R.id.layoutView);
+            if (!TextUtils.isEmpty(intent.getStringExtra("albumId"))) {
+                spotify.getAlbum(getId(intent.getStringExtra("albumId")), new Callback<Album>() {
+                    @Override
+                    public void success(Album album, Response response) {
+                        cover.setImageUrl(album.images.get(0).url, MainApplication.getInstance(context).getImageLoader());
+                    }
+
+                    @Override
+                    public void failure(RetrofitError error) {
+                        Log.e("MainActivity", "cannot retreive album : " + error.getBody().toString());
+                    }
+                });
+            }
+            updateArtistCover());
+            // Do something with extracted information...
+        } else if (action.equals(MyBroadcastReceiver.BroadcastTypes.PLAYBACK_STATE_CHANGED)) {
+            boolean playing = intent.getBooleanExtra("playing", false);
+            Log.e("MainActivity", "trigger playbackStateChange ( " + playing + " )");
+//            ImageView pause = findViewById(R.id.pause);
+//            ImageView play = findViewById(R.id.play);
+//            if (playing) {
+//                play.setVisibility(View.INVISIBLE);
+//                pause.setVisibility(View.VISIBLE);
+//            } else {
+//                pause.setVisibility(View.INVISIBLE);
+//                play.setVisibility(View.VISIBLE);
+//            }
+            int positionInMs = intent.getIntExtra("playbackPosition", 0);
+            // Do something with extracted information
+        } else if (action.equals(MyBroadcastReceiver.BroadcastTypes.QUEUE_CHANGED)) {
+            // Sent only as a notification, your app may want to respond accordingly.
+        }
+
+    }
+
+    private String getId(String objectId) {
+        String[] str = objectId.split(":");
+        return str[str.length-1];
+    }
+
+    private void updateArtistCover(final String trackId) {
+        new AsyncTask<Void, Void, Track>() {
+            @Override
+            protected Track doInBackground(Void... voids) {
+                Track track = spotify.getTrack(trackId);
+                return track;
+            }
+
+            @Override
+            protected void onPostExecute(Artist artist) {
+                FadeInNetworkImageView layoutView = findViewById(R.id.layoutView);
+                layoutView.setImageUrl(artist.images.get(0).url, MainApplication.getInstance(context).getImageLoader());
+            }
+        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 }
