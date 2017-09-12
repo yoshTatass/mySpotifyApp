@@ -36,12 +36,16 @@ import com.spotify.sdk.android.player.Player;
 import com.spotify.sdk.android.player.PlayerEvent;
 import com.spotify.sdk.android.player.Spotify;
 import com.spotify.sdk.android.player.SpotifyPlayer;
+import com.squareup.picasso.Picasso;
 
 import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.concurrent.ExecutionException;
 
+import jp.wasabeef.picasso.transformations.BlurTransformation;
+import jp.wasabeef.picasso.transformations.GrayscaleTransformation;
+import jp.wasabeef.picasso.transformations.gpu.BrightnessFilterTransformation;
 import kaaes.spotify.webapi.android.SpotifyApi;
 import kaaes.spotify.webapi.android.SpotifyError;
 import kaaes.spotify.webapi.android.SpotifyService;
@@ -207,28 +211,16 @@ public class MainActivity extends Activity implements
 
         if (action.equals(MyBroadcastReceiver.BroadcastTypes.METADATA_CHANGED)) {
             Log.e("MainActivity", "trigger");
-            Track track = null;
+            Track track;
             try {
                 track = getTrack(getId(intent.getStringExtra("id")));
+                updateAlbumCover(track);
             } catch (Exception e) {
-                track = null;
             }
-            TextView title = findViewById(R.id.title);
-            title.setText(track.name);
-            updateAlbumCover(track);
             // Do something with extracted information...
         } else if (action.equals(MyBroadcastReceiver.BroadcastTypes.PLAYBACK_STATE_CHANGED)) {
             boolean playing = intent.getBooleanExtra("playing", false);
             Log.e("MainActivity", "trigger playbackStateChange ( " + playing + " )");
-//            ImageView pause = findViewById(R.id.pause);
-//            ImageView play = findViewById(R.id.play);
-//            if (playing) {
-//                play.setVisibility(View.INVISIBLE);
-//                pause.setVisibility(View.VISIBLE);
-//            } else {
-//                pause.setVisibility(View.INVISIBLE);
-//                play.setVisibility(View.VISIBLE);
-//            }
             int positionInMs = intent.getIntExtra("playbackPosition", 0);
             // Do something with extracted information
         } else if (action.equals(MyBroadcastReceiver.BroadcastTypes.QUEUE_CHANGED)) {
@@ -248,6 +240,16 @@ public class MainActivity extends Activity implements
             protected Track doInBackground(Void... voids) {
                 return spotify.getTrack(trackId);
             }
+
+            @Override
+            protected void onPostExecute(Track track) {
+                TextView title = findViewById(R.id.title);
+                title.setText(track.name);
+                TextView album = findViewById(R.id.album);
+                album.setText(track.album.name);
+                TextView artist = findViewById(R.id.artist);
+                artist.setText(track.artists.get(0).name);
+            }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
     }
 
@@ -263,12 +265,9 @@ public class MainActivity extends Activity implements
                 final FadeInNetworkImageView cover = findViewById(R.id.cover);
                 cover.setImageUrl(coverUrl, MainApplication.getInstance(context).getImageLoader());
 
-                final FadeInNetworkImageView layoutView = findViewById(R.id.layoutView);
-                ColorMatrix matrix = new ColorMatrix();
-                matrix.setSaturation(0);
-                ColorMatrixColorFilter filter = new ColorMatrixColorFilter(matrix);
-                layoutView.setColorFilter(filter);
-                layoutView.setImageUrl(coverUrl, MainApplication.getInstance(context).getImageLoader());
+                final ImageView layoutView = findViewById(R.id.layoutView);
+                Picasso.with(context).load(coverUrl)
+                        .transform(new BlurTransformation(context, 20)).transform(new GrayscaleTransformation()).transform(new BrightnessFilterTransformation(context, 2)).into(layoutView);
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }

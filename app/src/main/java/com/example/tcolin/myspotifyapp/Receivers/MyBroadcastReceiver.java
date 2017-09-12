@@ -21,30 +21,11 @@ public class MyBroadcastReceiver extends BroadcastReceiver {
         public static final String METADATA_CHANGED = SPOTIFY_PACKAGE + ".metadatachanged";
     }
 
-    private String trackId, artistName, albumName, trackName = "" ;
-
     @Override
     public void onReceive(Context context, Intent intent) {
         // This is sent with all broadcasts, regardless of type. The value is taken from
         // System.currentTimeMillis(), which you can compare to in order to determine how
         // old the event is.
         ObservableObject.getInstance().updateValue(intent);
-
-    }
-
-    public String getTrackId() {
-        return trackId;
-    }
-
-    public String getArtistName() {
-        return artistName;
-    }
-
-    public String getAlbumName() {
-        return albumName;
-    }
-
-    public String getTrackName() {
-        return trackName;
     }
 }
