@@ -4,8 +4,12 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.PorterDuff;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -212,7 +216,6 @@ public class MainActivity extends Activity implements
             TextView title = findViewById(R.id.title);
             title.setText(track.name);
             updateAlbumCover(track);
-            updateArtistCover(track);
             // Do something with extracted information...
         } else if (action.equals(MyBroadcastReceiver.BroadcastTypes.PLAYBACK_STATE_CHANGED)) {
             boolean playing = intent.getBooleanExtra("playing", false);
@@ -259,22 +262,13 @@ public class MainActivity extends Activity implements
             protected void onPostExecute(String coverUrl) {
                 final FadeInNetworkImageView cover = findViewById(R.id.cover);
                 cover.setImageUrl(coverUrl, MainApplication.getInstance(context).getImageLoader());
-            }
-        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-    }
 
-    private void updateArtistCover(final Track track) {
-        new AsyncTask<Void, Void, List<Image>>() {
-            @Override
-            protected List<Image> doInBackground(Void... voids) {
-                Artist artist = spotify.getArtist(getId(track.artists.get(0).id));
-                return artist.images;
-            }
-
-            @Override
-            protected void onPostExecute(List<Image> images) {
                 final FadeInNetworkImageView layoutView = findViewById(R.id.layoutView);
-                layoutView.setImageUrl(images.get(0).url, MainApplication.getInstance(context).getImageLoader());
+                ColorMatrix matrix = new ColorMatrix();
+                matrix.setSaturation(0);
+                ColorMatrixColorFilter filter = new ColorMatrixColorFilter(matrix);
+                layoutView.setColorFilter(filter);
+                layoutView.setImageUrl(coverUrl, MainApplication.getInstance(context).getImageLoader());
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
