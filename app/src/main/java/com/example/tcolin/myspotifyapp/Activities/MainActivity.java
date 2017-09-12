@@ -4,8 +4,11 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.TextUtils;
 import android.util.Log;
@@ -30,14 +33,17 @@ import com.spotify.sdk.android.player.PlayerEvent;
 import com.spotify.sdk.android.player.Spotify;
 import com.spotify.sdk.android.player.SpotifyPlayer;
 
+import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.concurrent.ExecutionException;
 
 import kaaes.spotify.webapi.android.SpotifyApi;
 import kaaes.spotify.webapi.android.SpotifyError;
 import kaaes.spotify.webapi.android.SpotifyService;
 import kaaes.spotify.webapi.android.models.Album;
 import kaaes.spotify.webapi.android.models.Artist;
+import kaaes.spotify.webapi.android.models.Image;
 import kaaes.spotify.webapi.android.models.Track;
 import retrofit.Callback;
 import retrofit.RequestInterceptor;
@@ -192,30 +198,21 @@ public class MainActivity extends Activity implements
 
     @Override
     public void update(Observable observable, Object o) {
-        Intent intent = (Intent) o;
+        final Intent intent = (Intent) o;
         final String action = intent.getAction();
 
         if (action.equals(MyBroadcastReceiver.BroadcastTypes.METADATA_CHANGED)) {
             Log.e("MainActivity", "trigger");
-            TextView title = findViewById(R.id.title);
-            title.setText(intent.getStringExtra("track"));
-            Log.e("MainActivity", intent.getExtras().toString());
-            final FadeInNetworkImageView cover = findViewById(R.id.cover);
-            final FadeInNetworkImageView layoutView = findViewById(R.id.layoutView);
-            if (!TextUtils.isEmpty(intent.getStringExtra("albumId"))) {
-                spotify.getAlbum(getId(intent.getStringExtra("albumId")), new Callback<Album>() {
-                    @Override
-                    public void success(Album album, Response response) {
-                        cover.setImageUrl(album.images.get(0).url, MainApplication.getInstance(context).getImageLoader());
-                    }
-
-                    @Override
-                    public void failure(RetrofitError error) {
-                        Log.e("MainActivity", "cannot retreive album : " + error.getBody().toString());
-                    }
-                });
+            Track track = null;
+            try {
+                track = getTrack(getId(intent.getStringExtra("id")));
+            } catch (Exception e) {
+                track = null;
             }
-            updateArtistCover());
+            TextView title = findViewById(R.id.title);
+            title.setText(track.name);
+            updateAlbumCover(track);
+            updateArtistCover(track);
             // Do something with extracted information...
         } else if (action.equals(MyBroadcastReceiver.BroadcastTypes.PLAYBACK_STATE_CHANGED)) {
             boolean playing = intent.getBooleanExtra("playing", false);
@@ -242,18 +239,42 @@ public class MainActivity extends Activity implements
         return str[str.length-1];
     }
 
-    private void updateArtistCover(final String trackId) {
-        new AsyncTask<Void, Void, Track>() {
+    private Track getTrack(final String trackId) throws Exception {
+        return new AsyncTask<Void, Void, Track>() {
             @Override
             protected Track doInBackground(Void... voids) {
-                Track track = spotify.getTrack(trackId);
-                return track;
+                return spotify.getTrack(trackId);
+            }
+        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
+    }
+
+    private void updateAlbumCover(final Track track) {
+        new AsyncTask<Void, Void, String>() {
+            @Override
+            protected String doInBackground(Void... voids) {
+                return track.album.images.get(0).url;
             }
 
             @Override
-            protected void onPostExecute(Artist artist) {
-                FadeInNetworkImageView layoutView = findViewById(R.id.layoutView);
-                layoutView.setImageUrl(artist.images.get(0).url, MainApplication.getInstance(context).getImageLoader());
+            protected void onPostExecute(String coverUrl) {
+                final FadeInNetworkImageView cover = findViewById(R.id.cover);
+                cover.setImageUrl(coverUrl, MainApplication.getInstance(context).getImageLoader());
+            }
+        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+    private void updateArtistCover(final Track track) {
+        new AsyncTask<Void, Void, List<Image>>() {
+            @Override
+            protected List<Image> doInBackground(Void... voids) {
+                Artist artist = spotify.getArtist(getId(track.artists.get(0).id));
+                return artist.images;
+            }
+
+            @Override
+            protected void onPostExecute(List<Image> images) {
+                final FadeInNetworkImageView layoutView = findViewById(R.id.layoutView);
+                layoutView.setImageUrl(images.get(0).url, MainApplication.getInstance(context).getImageLoader());
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
