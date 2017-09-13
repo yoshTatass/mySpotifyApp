@@ -44,6 +44,7 @@ import java.util.Observer;
 import java.util.concurrent.ExecutionException;
 
 import jp.wasabeef.picasso.transformations.BlurTransformation;
+import jp.wasabeef.picasso.transformations.CropCircleTransformation;
 import jp.wasabeef.picasso.transformations.GrayscaleTransformation;
 import jp.wasabeef.picasso.transformations.gpu.BrightnessFilterTransformation;
 import kaaes.spotify.webapi.android.SpotifyApi;
@@ -53,6 +54,7 @@ import kaaes.spotify.webapi.android.models.Album;
 import kaaes.spotify.webapi.android.models.Artist;
 import kaaes.spotify.webapi.android.models.Image;
 import kaaes.spotify.webapi.android.models.Track;
+import kaaes.spotify.webapi.android.models.UserPrivate;
 import retrofit.Callback;
 import retrofit.RequestInterceptor;
 import retrofit.RestAdapter;
@@ -182,6 +184,7 @@ public class MainActivity extends Activity implements
     @Override
     public void onLoggedIn() {
         Log.e("MainActivity", "User logged in");
+        UserPrivate me = getMe();
     }
 
     @Override
@@ -234,6 +237,25 @@ public class MainActivity extends Activity implements
         return str[str.length-1];
     }
 
+    private UserPrivate getMe() {
+        try {
+            return new AsyncTask<Void, Void, UserPrivate>() {
+                @Override
+                protected UserPrivate doInBackground(Void... voids) {
+                    return spotify.getMe();
+                }
+
+                @Override
+                protected void onPostExecute(UserPrivate userPrivate) {
+                    ImageView user = findViewById(R.id.user);
+                    Picasso.with(context).load(userPrivate.images.get(0).url).transform(new CropCircleTransformation()).into(user);
+                }
+            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR).get();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private Track getTrack(final String trackId) throws Exception {
         return new AsyncTask<Void, Void, Track>() {
             @Override
@@ -267,7 +289,7 @@ public class MainActivity extends Activity implements
 
                 final ImageView layoutView = findViewById(R.id.layoutView);
                 Picasso.with(context).load(coverUrl)
-                        .transform(new BlurTransformation(context, 20)).transform(new GrayscaleTransformation()).transform(new BrightnessFilterTransformation(context, 2)).into(layoutView);
+                        .transform(new BlurTransformation(context, 15)).transform(new BrightnessFilterTransformation(context, new Float(-0.3))).into(layoutView);
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
