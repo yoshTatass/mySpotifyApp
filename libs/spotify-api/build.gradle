@@ -1,0 +1,25 @@
+apply plugin: 'com.android.library'
+
+dependencies {
+    compile('com.squareup.retrofit:retrofit:1.9.0')
+}
+
+android {
+    compileSdkVersion 23
+    buildToolsVersion '25.0.0'
+
+    defaultConfig {
+        minSdkVersion 23
+        targetSdkVersion 26
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        debug {
+            testCoverageEnabled = true
+        }
+    }
+}
+
+

@@ -1,1 +1,3 @@
 include ':app'
+include ':spotify-api'
+project(':spotify-api').projectDir = new File('libs/spotify-api')

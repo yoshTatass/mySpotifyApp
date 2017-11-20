@@ -68,5 +68,4 @@ public class MainApplication extends Application {
     public ImageLoader getImageLoader() {
         return mImageLoader;
     }
-
 }
